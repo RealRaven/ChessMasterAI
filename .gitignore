@@ -1,0 +1,108 @@
+# ================================================================
+# ChessMasterAI — .gitignore
+# ================================================================
+# Notes for contributors:
+#   • vendor/ IS committed on purpose (pinned CDN libs for offline use).
+#   • docs/ and assets/models/.gitkeep ARE committed.
+#   • User-supplied .glb avatars in assets/models/ are ignored by default
+#     so the repo stays small. Use `git add -f` if you want to ship one.
+# ================================================================
+
+
+# ---------- Node / tooling (optional) ----------
+# Only needed if a contributor adds a test runner or uses `npx serve`.
+node_modules/
+.npm/
+.npx/
+.pnpm-store/
+.yarn/
+
+# ---------- Build / bundle output ----------
+# The game has no build step, but these might appear if tooling is added.
+dist/
+build/
+out/
+.cache/
+.parcel-cache/
+.vite/
+
+# ---------- Test output ----------
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+.vitest/
+*.lcov
+
+# ---------- Logs ----------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+*.local
+
+# ---------- OS cruft ----------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+*.swp
+*.swo
+*~
+
+# ---------- Editor / IDE ----------
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# ---------- Local avatar / texture uploads ----------
+# Users can drop .glb files into assets/models/ at runtime, but those
+# shouldn't be auto-committed. Force-add explicitly if shipping a demo.
+assets/models/*.glb
+assets/models/*.gltf
+assets/models/*.bin
+assets/textures/*.png
+assets/textures/*.jpg
+assets/textures/*.jpeg
+assets/textures/*.webp
+assets/textures/*.ktx2
+
+# ---------- Archives / zips ----------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# ---------- Misc ----------
+*.tmp
+*.bak
+*.orig
+*.rej
+.crush
