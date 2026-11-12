@@ -1,0 +1,52 @@
+/* ================================================================
+   speech-bubbles.css — CSS2D-anchored chat bubbles above avatars
+   ================================================================ */
+
+.speech-bubble {
+  position: relative;
+  max-width: 220px;
+  padding: 8px 12px;
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+  background: rgba(10, 15, 30, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -100%);
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.2s ease;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.speech-bubble.visible {
+  opacity: 1;
+  transform: translate(-50%, -100%) scale(1.02);
+}
+
+/* Speech bubble tail */
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-top-color: rgba(10, 15, 30, 0.92);
+}
+
+/* Black player accent */
+.speech-bubble.black-bubble {
+  border-color: rgba(255, 77, 196, 0.4);
+}
+
+/* Emotion color hints — set dynamically via inline style on .speech-bubble,
+   but these are sensible defaults for a nice CSS fallback. */
+.speech-bubble[data-emotion="nervous"]     { border-color: rgba(255, 107, 107, 0.55); }
+.speech-bubble[data-emotion="triumphant"]  { border-color: rgba(255, 221, 0, 0.55); }
+.speech-bubble[data-emotion="thinking"]    { border-color: rgba(160, 140, 255, 0.55); }
+.speech-bubble[data-emotion="confident"]   { border-color: rgba(0, 229, 255, 0.4); }

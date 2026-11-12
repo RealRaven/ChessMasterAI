@@ -1,0 +1,24 @@
+/* ================================================================
+   themes.css — CSS-variable scopes for each board theme
+   The Three.js scene reads equivalent values from src/three/themes.js
+   so the HUD and the 3D board stay visually in sync.
+   ================================================================ */
+
+body.theme-classic {
+  --bg: #1a120b;
+  --glass-bg: rgba(30, 20, 12, 0.78);
+}
+
+body.theme-cyberpunk {
+  --bg: #050510;
+  --accent-white: #00f0ff;
+  --accent-black: #ff006e;
+  --glass-bg: rgba(5, 10, 20, 0.82);
+}
+
+body.theme-marble {
+  --bg: #1a1a1a;
+  --accent-white: #e0e0e0;
+  --accent-black: #888;
+  --glass-bg: rgba(20, 20, 20, 0.82);
+}
