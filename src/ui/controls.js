@@ -1,17 +1,12 @@
 /* ================================================================
    controls.js — Play / Pause / Step / Reset buttons.
-   Delegates to core/game-loop; never calls engine directly.
    ================================================================ */
 
 import { events } from '../core/events.js';
 import { state } from '../core/state.js';
 import { qs } from '../utils/dom.js';
+import { unlockAudio } from '../audio/tts.js'; // <-- Import the unlock function
 
-/**
- * @param {object} deps
- * @param {{play:Function, pause:Function, step:Function, reset:Function}} deps.gameLoop
- * @param {object} deps.gameDeps — the injected dependency bundle for game-loop
- */
 export function mountControls({ gameLoop, gameDeps }) {
   const playBtn  = qs('#btn-play');
   const pauseBtn = qs('#btn-pause');
@@ -19,12 +14,16 @@ export function mountControls({ gameLoop, gameDeps }) {
   const resetBtn = qs('#btn-reset');
 
   playBtn.addEventListener('click', () => {
+    unlockAudio(); // <-- Unlock audio on user gesture
     if (state.gameState === 'gameover') gameLoop.reset();
     gameLoop.play(gameDeps);
   });
 
   pauseBtn.addEventListener('click', () => gameLoop.pause());
-  stepBtn.addEventListener('click',  () => gameLoop.step(gameDeps));
+  stepBtn.addEventListener('click',  () => {
+    unlockAudio(); // Also unlock here just in case
+    gameLoop.step(gameDeps);
+  });
   resetBtn.addEventListener('click', () => gameLoop.reset());
 
   function updateButtons() {
@@ -32,7 +31,6 @@ export function mountControls({ gameLoop, gameDeps }) {
     playBtn.disabled  = s === 'playing';
     pauseBtn.disabled = s !== 'playing';
     stepBtn.disabled  = s === 'playing' || s === 'gameover';
-    /* reset always enabled */
   }
 
   events.on('state:game', updateButtons);

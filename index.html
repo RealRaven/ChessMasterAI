@@ -13,6 +13,24 @@
   <link rel="stylesheet" href="./src/styles/speech-bubbles.css" />
   <link rel="stylesheet" href="./src/styles/themes.css" />
 
+  <script>
+    window.env = window.env || {};
+    window.env.userBrowserCache = false;
+    
+    // Shim the Cache API to prevent "caches is not defined" on insecure contexts
+    if (!window.caches) {
+      window.caches = {
+        open: async () => ({
+          match: async () => undefined,
+          put: async () => {},
+          delete: async () => {},
+        }),
+        keys: async () => [],
+        delete: async () => {},
+      };
+    }
+  </script>
+
   <script type="importmap">
   {
     "imports": {
