@@ -8,6 +8,8 @@ No build step. No backend. No cloud. Just a browser, Three.js, and your local LL
 
 **Repo:** [github.com/RealRaven/ChessMasterAI](https://github.com/RealRaven/ChessMasterAI)
 
+![ChessMasterAI 3D Arena Screenshot](./docs/screenshot.png)
+
 ---
 
 ## ✨ Features
@@ -332,6 +334,7 @@ MIT — see [`LICENSE`](./LICENSE). Do whatever you want, no warranty. If you tr
 - [chess.js](https://github.com/jhlywa/chess.js) — the referee
 - [Three.js](https://threejs.org) — the stage
 - [Ollama](https://ollama.com) — the players
+- [Kokoro-82M](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX) — the voices
 - Every vision model that has ever hallucinated `Ke9` — this project exists because of you
 
 ---
