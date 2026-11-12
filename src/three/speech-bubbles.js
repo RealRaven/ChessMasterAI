@@ -2,14 +2,13 @@
    speech-bubbles.js — CSS2D anchored chat bubbles above each avatar.
    ================================================================ */
 
-const HIDE_DELAY_MS = 6500;
-
 /**
  * @param {THREE.Scene} scene
  * @returns {{
  *   show: (side:'white'|'black', text:string, emotion?:string) => void,
  *   hide: (side:'white'|'black') => void,
  *   setAnchor: (side:'white'|'black', worldPos: THREE.Vector3) => void,
+ *   clear: () => void,
  * }}
  */
 export function createSpeechBubbles(scene) {
@@ -25,30 +24,22 @@ export function createSpeechBubbles(scene) {
     obj.position.set(0, 2.2, side === 'white' ? -5.5 : 5.5);
     scene.add(obj);
 
-    const entry = { div, obj, timer: null };
+    const entry = { div, obj };
     entries.set(side, entry);
     return entry;
   }
 
   function show(side, text, emotion = 'confident') {
     const entry = ensure(side);
-
     entry.div.textContent = text;
     entry.div.dataset.emotion = emotion;
     entry.div.classList.add('visible');
-
-    if (entry.timer) clearTimeout(entry.timer);
-    entry.timer = setTimeout(() => {
-      entry.div.classList.remove('visible');
-      entry.timer = null;
-    }, HIDE_DELAY_MS);
+    // NOTE: No setTimeout here. We let the TTS control visibility.
   }
 
   function hide(side) {
     const entry = entries.get(side);
     if (!entry) return;
-    if (entry.timer) clearTimeout(entry.timer);
-    entry.timer = null;
     entry.div.classList.remove('visible');
   }
 

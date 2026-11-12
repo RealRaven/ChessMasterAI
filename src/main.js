@@ -77,7 +77,7 @@ try {
     return await ollamaChat({ model, messages });
   }
 
-  /* ================================================================
+ /* ================================================================
      onCommit
      ================================================================ */
   async function onCommit(moveData) {
@@ -95,12 +95,30 @@ try {
     });
 
     pieces.syncBoard(engine.getBoard());
+    
+    // Show the bubble and set emotion
     bubbles.show(side, moveData.speech, moveData.emotion);
     avatars.setEmotion(side, moveData.emotion);
 
-    if (moveData.speech) TTS.speak(moveData.speech, side);
+    if (moveData.speech) {
+      // 1. Ensure the bubble is visible for at least 3 seconds to read
+      const minReadTime = new Promise((r) => setTimeout(r, 3000));
+      
+      // 2. Wait for TTS to actually finish speaking
+      const spoken = TTS.speak(moveData.speech, side);
+      
+      // 3. Wait for both to finish
+      await Promise.all([minReadTime, spoken]);
+      
+      // 4. Small grace period (800ms) after they stop talking, then hide bubble
+      await new Promise((r) => setTimeout(r, 800));
+      bubbles.hide(side);
+    } else {
+      // If there's no speech, just hide it after 3 seconds
+      setTimeout(() => bubbles.hide(side), 3000);
+    }
   }
-
+  
   /* ================================================================
      onGameOver
      ================================================================ */

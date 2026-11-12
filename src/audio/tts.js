@@ -1,5 +1,5 @@
 /* ================================================================
-   tts.js — Kokoro-82M TTS wrapper (WebGPU + Audio Queue)
+   tts.js — Kokoro-82M TTS wrapper (WebGPU + Audio Queue + Promises)
    ================================================================ */
 
 import { KokoroTTS } from 'kokoro-js';
@@ -15,7 +15,6 @@ const speechQueue = [];
 (async () => {
   try {
     console.log('[TTS] Loading Kokoro-82M model...');
-    
     let device = 'wasm';
     let dtype = 'q8';
 
@@ -51,21 +50,20 @@ export function unlockAudio() {
   }
 }
 
-// --- Queue Processor ---
 async function processQueue() {
   if (isSpeaking || speechQueue.length === 0) return;
 
   isSpeaking = true;
-  const { text, side } = speechQueue.shift();
+  const { text, side, resolve } = speechQueue.shift();
 
   try {
     unlockAudio();
-    
     const voice = side === 'white' ? 'af_sky' : 'am_adam';
     const cleanText = text.replace(/[*_#`"']/g, '').trim();
     
     if (!cleanText) {
         isSpeaking = false;
+        resolve();
         processQueue(); // Skip empty text
         return;
     }
@@ -75,8 +73,7 @@ async function processQueue() {
     const audio = await tts.generate(cleanText, { voice, lang: "en-us" });
     const wavBuffer = audio.toWav();
     
-    // Use a Promise to wait for the audio to finish playing
-    await new Promise((resolve, reject) => {
+    await new Promise((decodeResolve, reject) => {
       audioCtx.decodeAudioData(wavBuffer, (buffer) => {
         const source = audioCtx.createBufferSource();
         source.buffer = buffer;
@@ -89,7 +86,7 @@ async function processQueue() {
         
         source.onended = () => {
           console.log('[TTS] Playback finished.');
-          resolve();
+          decodeResolve();
         };
         
         source.start(0);
@@ -103,16 +100,19 @@ async function processQueue() {
   } catch (err) {
     console.error('[TTS] Generation or playback failed:', err);
   } finally {
-    // Mark as done and process the next item in the queue
+    resolve(); // Resolve the Promise returned by speak()
     isSpeaking = false;
     processQueue();
   }
 }
 
 export async function speak(text, side = 'white') {
-  if (muted || !text || !tts) return;
-  speechQueue.push({ text, side });
-  processQueue();
+  if (muted || !text || !tts) return Promise.resolve();
+  
+  return new Promise((resolve) => {
+    speechQueue.push({ text, side, resolve });
+    processQueue();
+  });
 }
 
 export const TTS = {
