@@ -1,5 +1,5 @@
 /* ================================================================
-   tts.js — Kokoro-82M TTS wrapper (Language Forced)
+   tts.js — Kokoro-82M TTS wrapper (WebGPU + WASM Fallback)
    ================================================================ */
 
 import { KokoroTTS } from 'kokoro-js';
@@ -11,19 +11,33 @@ let audioCtx = null;
 (async () => {
   try {
     console.log('[TTS] Loading Kokoro-82M model...');
+    
     let device = 'wasm';
+    let dtype = 'q8'; // Optimized for WASM/CPU
+
+    // Check if WebGPU is actually usable
     if (navigator.gpu) {
       try {
         const adapter = await navigator.gpu.requestAdapter();
-        if (adapter) device = 'webgpu';
-      } catch (e) {}
+        if (adapter) {
+          device = 'webgpu';
+          dtype = 'fp32'; // WebGPU requires fp32 for correct audio generation
+          console.log('[TTS] WebGPU adapter found. Using GPU acceleration.');
+        } else {
+          console.log('[TTS] WebGPU supported but no adapter found. Falling back to WASM.');
+        }
+      } catch (e) {
+        console.warn('[TTS] WebGPU adapter request failed, falling back to WASM', e);
+      }
+    } else {
+      console.log('[TTS] WebGPU not supported in this browser. Using WASM.');
     }
 
     tts = await KokoroTTS.from_pretrained(
       "onnx-community/Kokoro-82M-v1.0-ONNX",
-      { dtype: device === 'wasm' ? 'fp32' : 'q8', device }
+      { dtype: dtype, device: device }
     );
-    console.log('[TTS] Kokoro-82M loaded and ready.');
+    console.log(`[TTS] Kokoro-82M loaded and ready on ${device}.`);
   } catch (err) {
     console.error('[TTS] Failed to load Kokoro model:', err);
   }
@@ -45,13 +59,10 @@ export async function speak(text, side = 'white') {
     unlockAudio();
 
     const voice = side === 'white' ? 'af_sky' : 'am_adam';
-    
-    // Sanitize text: remove markdown asterisks, quotes, and weird unicode that confuses the phonemizer
     const cleanText = text.replace(/[*_#`"']/g, '').trim();
     
     console.log(`[TTS] Generating audio for: "${cleanText}" with voice: ${voice}`);
     
-    // Force English language and use the sanitized text
     const audio = await tts.generate(cleanText, { 
       voice: voice,
       lang: "en-us" 
