@@ -60,8 +60,8 @@ async function tick(deps) {
         return await deps.callAI({
           fen: ctx.fen,
           legalMoves: ctx.legalMoves,
-          turn,
-          side,
+          turn, // <--- FIXED: Use local turn instead of ctx.turn
+          side, // <--- FIXED: Use local side instead of ctx.side
           attempt: ctx.attempt,
           previousRejection: ctx.previousRejection,
           whisper,

@@ -30,13 +30,26 @@
       </div>
 
       <div class="hud-section">
-        <h3>🎮 Controls</h3>
-        <div class="hud-row">
-          <button id="btn-play" class="btn-primary">▶ Play</button>
-          <button id="btn-pause">⏸ Pause</button>
-          <button id="btn-step">⏭ Step</button>
-          <button id="btn-reset" class="btn-danger">⟲ Reset</button>
-        </div>
+        <h3>🤖 Models &amp; Personality</h3>
+        <label class="field-label">White (Qwen)</label>
+        <input type="text" id="model-white" value="qwen3.5:9b" placeholder="ollama model tag" />
+        <select id="personality-white">
+          <option value="trash">Trash-Talking Grandmaster</option>
+          <option value="polite">Polite Philosopher</option>
+          <option value="chaotic">Chaotic Gremlin</option>
+        </select>
+        <label class="field-label">Black (Gemma)</label>
+        <input type="text" id="model-black" value="gemma4:e4b" placeholder="ollama model tag" />
+        <select id="personality-black">
+          <option value="trash">Trash-Talking Grandmaster</option>
+          <option value="polite">Polite Philosopher</option>
+          <option value="chaotic">Chaotic Gremlin</option>
+        </select>
+        <!-- ADD THIS -->
+        <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-top:6px; color:var(--text-dim);">
+          <input type="checkbox" id="text-only-mode">
+          Text-only mode (no images)
+        </label>
       </div>
 
       <div class="hud-section">
