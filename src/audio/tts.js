@@ -1,8 +1,45 @@
 /* ================================================================
-   tts.js — Kokoro-82M TTS wrapper (WebGPU + Audio Queue + Promises)
+   tts.js — Kokoro-82M TTS wrapper (WebGPU + Cache/Log Fixes)
    ================================================================ */
 
 import { KokoroTTS } from 'kokoro-js';
+
+// --- 1. Patch the Cache API to ignore put() errors ---
+if (typeof caches !== 'undefined' && caches?.default) {
+  const originalPut = caches.default.put;
+  caches.default.put = async function (request, response) {
+    try {
+      return await originalPut.call(this, request, response);
+    } catch (err) {
+      // Silently ignore cache write failures (e.g., UnknownError)
+      return undefined;
+    }
+  };
+}
+
+// --- 2. Suppress the specific ONNX Runtime EP warnings ---
+const originalWarn = console.warn;
+console.warn = function (...args) {
+  const msg = args.join(' ');
+  if (
+    msg.includes('VerifyEachNodeIsAssignedToAnEp') ||
+    msg.includes('Some nodes were not assigned to the preferred execution providers')
+  ) {
+    return; // Drop these specific warnings
+  }
+  originalWarn.apply(console, args);
+};
+
+// --- 3. Try to set log level and disable browser cache globally ---
+// (Kokoro-js bundles its own onnxruntime-web, but we can try the global)
+if (typeof window !== 'undefined' && window.ort?.env) {
+  window.ort.env.logLevel = 'error';
+}
+// Transformers.js env (may be exposed globally by kokoro-js)
+if (typeof window !== 'undefined' && window.env) {
+  window.env.useBrowserCache = false;
+  window.env.userBrowserCache = false;
+}
 
 let tts = null;
 let muted = false;
@@ -60,35 +97,34 @@ async function processQueue() {
     unlockAudio();
     const voice = side === 'white' ? 'af_sky' : 'am_adam';
     const cleanText = text.replace(/[*_#`"']/g, '').trim();
-    
+
     if (!cleanText) {
-        isSpeaking = false;
-        resolve();
-        processQueue(); // Skip empty text
-        return;
+      isSpeaking = false;
+      resolve();
+      processQueue();
+      return;
     }
 
     console.log(`[TTS] Generating audio for: "${cleanText}"`);
-    
     const audio = await tts.generate(cleanText, { voice, lang: "en-us" });
     const wavBuffer = audio.toWav();
-    
+
     await new Promise((decodeResolve, reject) => {
       audioCtx.decodeAudioData(wavBuffer, (buffer) => {
         const source = audioCtx.createBufferSource();
         source.buffer = buffer;
-        
+
         const gainNode = audioCtx.createGain();
-        gainNode.gain.value = 1.0; 
-        
+        gainNode.gain.value = 1.0;
+
         source.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-        
+
         source.onended = () => {
           console.log('[TTS] Playback finished.');
           decodeResolve();
         };
-        
+
         source.start(0);
         console.log('[TTS] Playback started.');
       }, (err) => {
@@ -100,7 +136,7 @@ async function processQueue() {
   } catch (err) {
     console.error('[TTS] Generation or playback failed:', err);
   } finally {
-    resolve(); // Resolve the Promise returned by speak()
+    resolve();
     isSpeaking = false;
     processQueue();
   }
@@ -108,7 +144,7 @@ async function processQueue() {
 
 export async function speak(text, side = 'white') {
   if (muted || !text || !tts) return Promise.resolve();
-  
+
   return new Promise((resolve) => {
     speechQueue.push({ text, side, resolve });
     processQueue();
@@ -121,7 +157,7 @@ export const TTS = {
   toggleMute() {
     muted = !muted;
     if (muted) {
-      speechQueue.length = 0; // Clear pending queue
+      speechQueue.length = 0;
       if (audioCtx) audioCtx.suspend();
     } else {
       if (audioCtx) audioCtx.resume();
