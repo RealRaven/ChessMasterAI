@@ -88,8 +88,16 @@ export function mountSettingsPanel({ avatars, applyTheme }) {
     const muted = SFX.toggleMute();
     sfxBtn.textContent = `SFX: ${muted ? 'Off' : 'On'}`;
   });
-  ttsBtn.addEventListener('click', () => {
-    const muted = TTS.toggleMute();
-    ttsBtn.textContent = `TTS: ${muted ? 'Off' : 'On'}`;
-  });
+
+  /* Check for TTS support before attaching the click listener */
+  if (!TTS.isSupported()) {
+    ttsBtn.disabled = true;
+    ttsBtn.textContent = 'TTS: Unsupported';
+    ttsBtn.title = 'Your browser or OS does not support speech synthesis.';
+  } else {
+    ttsBtn.addEventListener('click', () => {
+      const muted = TTS.toggleMute();
+      ttsBtn.textContent = `TTS: ${muted ? 'Off' : 'On'}`;
+    });
+  }
 }

@@ -1,5 +1,6 @@
 /* ================================================================
    tts.js — speechSynthesis wrapper with per-side pitch/rate.
+   Handles missing OS voices or browser support gracefully.
    ================================================================ */
 
 let muted = false;
@@ -15,7 +16,10 @@ if ('speechSynthesis' in window) {
 }
 
 export function speak(text, side = 'white') {
-  if (muted || !text || !('speechSynthesis' in window)) return;
+  // Guard clause: check for API support before doing anything
+  if (muted || !text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    return;
+  }
 
   // Cancel any in-flight utterance so lines don't queue up.
   speechSynthesis.cancel();
@@ -36,6 +40,9 @@ export function speak(text, side = 'white') {
 
 export const TTS = {
   speak,
+  isSupported() {
+    return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+  },
   toggleMute() {
     muted = !muted;
     if (muted && 'speechSynthesis' in window) speechSynthesis.cancel();
