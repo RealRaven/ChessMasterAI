@@ -1,41 +1,56 @@
 /* ================================================================
-   tts.js — Kokoro-82M TTS wrapper (WebGPU + Cache/Log Fixes)
+   tts.js — Kokoro-82M TTS wrapper (WebGPU + Silent Cache Patch)
    ================================================================ */
 
 import { KokoroTTS } from 'kokoro-js';
 
-// --- 1. Patch the Cache API to ignore put() errors ---
-if (typeof caches !== 'undefined' && caches?.default) {
-  const originalPut = caches.default.put;
-  caches.default.put = async function (request, response) {
-    try {
-      return await originalPut.call(this, request, response);
-    } catch (err) {
-      // Silently ignore cache write failures (e.g., UnknownError)
-      return undefined;
+// --- 1. Globally patch the Cache API to fail silently ---
+// kokoro-js tries to save the model to the browser cache. If Chrome
+// blocks it (sandbox/disk limit), it throws an ugly red error.
+// We intercept caches.open and caches.put to swallow these.
+if (typeof caches !== 'undefined') {
+  const originalOpen = caches.open;
+  caches.open = async function (name) {
+    const cache = await originalOpen.call(this, name);
+    if (!cache._patched) {
+      const originalPut = cache.put;
+      cache.put = async function (req, res) {
+        try {
+          return await originalPut.call(this, req, res);
+        } catch (err) {
+          return undefined; // Silently ignore cache write failures
+        }
+      };
+      cache._patched = true;
     }
+    return cache;
   };
 }
 
-// --- 2. Suppress the specific ONNX Runtime EP warnings ---
+// --- 2. Filter console warnings/errors ---
 const originalWarn = console.warn;
+const originalError = console.error;
+
+function shouldFilter(msg) {
+  const str = typeof msg === 'string' ? msg : '';
+  return (
+    str.includes('VerifyEachNodeIsAssignedToAnEp') ||
+    str.includes('Some nodes were not assigned to the preferred execution providers') ||
+    str.includes('Unable to add response to browser cache')
+  );
+}
+
 console.warn = function (...args) {
-  const msg = args.join(' ');
-  if (
-    msg.includes('VerifyEachNodeIsAssignedToAnEp') ||
-    msg.includes('Some nodes were not assigned to the preferred execution providers')
-  ) {
-    return; // Drop these specific warnings
-  }
+  if (args.some(shouldFilter)) return;
   originalWarn.apply(console, args);
 };
 
-// --- 3. Try to set log level and disable browser cache globally ---
-// (Kokoro-js bundles its own onnxruntime-web, but we can try the global)
-if (typeof window !== 'undefined' && window.ort?.env) {
-  window.ort.env.logLevel = 'error';
-}
-// Transformers.js env (may be exposed globally by kokoro-js)
+console.error = function (...args) {
+  if (args.some(shouldFilter)) return;
+  originalError.apply(console, args);
+};
+
+// --- 3. Try to disable cache natively ---
 if (typeof window !== 'undefined' && window.env) {
   window.env.useBrowserCache = false;
   window.env.userBrowserCache = false;
@@ -44,8 +59,6 @@ if (typeof window !== 'undefined' && window.env) {
 let tts = null;
 let muted = false;
 let audioCtx = null;
-
-// --- Audio Queue State ---
 let isSpeaking = false;
 const speechQueue = [];
 
