@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ChessMasterAI — a 3D AI-vs-AI chess arena powered by local Ollama vision models." />
+  <title>♟ ChessMasterAI — Qwen vs Gemma</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟</text></svg>" />
+
+  <!-- ========== Styles (split by concern) ========== -->
+  <link rel="stylesheet" href="./src/styles/main.css" />
+  <link rel="stylesheet" href="./src/styles/hud.css" />
+  <link rel="stylesheet" href="./src/styles/speech-bubbles.css" />
+  <link rel="stylesheet" href="./src/styles/themes.css" />
+</head>
+<body class="theme-classic">
+  <div id="app">
+    <!-- Three.js WebGL canvas -->
+    <div id="webgl-container"></div>
+    <!-- CSS2DRenderer overlay for speech bubbles + coordinate labels -->
+    <div id="css2d-container"></div>
+
+    <!-- ========== Spectator HUD ========== -->
+    <aside id="hud">
+      <button id="hud-toggle" title="Collapse menu">☰</button>
+
+      <div id="hud-header">
+        <span class="brand">♟ ChessMasterAI</span>
+        <span class="version">v0.1</span>
+      </div>
+
+      <div class="hud-section">
+        <h3>🎮 Controls</h3>
+        <div class="hud-row">
+          <button id="btn-play" class="btn-primary">▶ Play</button>
+          <button id="btn-pause">⏸ Pause</button>
+          <button id="btn-step">⏭ Step</button>
+          <button id="btn-reset" class="btn-danger">⟲ Reset</button>
+        </div>
+      </div>
+
+      <div class="hud-section">
+        <h3>🎨 Board Theme</h3>
+        <select id="theme-select">
+          <option value="classic">Classic Wood</option>
+          <option value="cyberpunk">Cyberpunk Neon</option>
+          <option value="marble">Marble &amp; Obsidian</option>
+        </select>
+      </div>
+
+      <div class="hud-section">
+        <h3>🤖 Models &amp; Personality</h3>
+        <label class="field-label">White (Qwen)</label>
+        <input type="text" id="model-white" value="qwen3.5:9b" placeholder="ollama model tag" />
+        <select id="personality-white">
+          <option value="trash">Trash-Talking Grandmaster</option>
+          <option value="polite">Polite Philosopher</option>
+          <option value="chaotic">Chaotic Gremlin</option>
+        </select>
+        <label class="field-label">Black (Gemma)</label>
+        <input type="text" id="model-black" value="gemma4:e4b" placeholder="ollama model tag" />
+        <select id="personality-black">
+          <option value="trash">Trash-Talking Grandmaster</option>
+          <option value="polite">Polite Philosopher</option>
+          <option value="chaotic">Chaotic Gremlin</option>
+        </select>
+      </div>
+
+      <div class="hud-section">
+        <h3>🖼️ Avatar Upload (.glb)</h3>
+        <label class="file-label">White: <input type="file" id="upload-white" accept=".glb,.gltf" /></label>
+        <label class="file-label">Black: <input type="file" id="upload-black" accept=".glb,.gltf" /></label>
+      </div>
+
+      <div class="hud-section">
+        <h3>📷 Camera Presets</h3>
+        <div class="hud-row">
+          <button data-cam="free">Free Orbit</button>
+          <button data-cam="overhead">Overhead</button>
+          <button data-cam="white">White POV</button>
+          <button data-cam="black">Black POV</button>
+          <button data-cam="auto">Auto-Cam</button>
+        </div>
+      </div>
+
+      <div class="hud-section">
+        <h3>🔊 Audio / TTS</h3>
+        <div class="hud-row">
+          <button id="btn-mute-sfx">SFX: On</button>
+          <button id="btn-mute-tts">TTS: On</button>
+        </div>
+      </div>
+
+      <div class="hud-section">
+        <h3>🕵️ Whisper / Sabotage</h3>
+        <div class="hud-row">
+          <input type="text" id="whisper-input" placeholder="Secret hint for active AI…" />
+          <button id="btn-whisper">Send</button>
+        </div>
+      </div>
+
+      <div class="hud-section">
+        <h3>📸 Vision Preview</h3>
+        <img id="vision-preview" alt="Snapshot sent to LLM" style="display:none" />
+        <div id="vision-status">No snapshot yet</div>
+      </div>
+
+      <div class="hud-section">
+        <h3>⚖️ Referee Log</h3>
+        <div id="referee-log" class="log-pane"></div>
+      </div>
+
+      <div class="hud-section">
+        <h3>📜 Move History</h3>
+        <div id="move-history" class="log-pane log-moves"></div>
+        <button id="btn-export-pgn" class="full-width">⬇ Export PGN</button>
+      </div>
+
+      <div class="hud-section">
+        <h3>💬 Chat Transcript</h3>
+        <div id="chat-transcript" class="log-pane"></div>
+      </div>
+
+      <div id="hud-footer">
+        <a href="https://github.com/RealRaven/ChessMasterAI" target="_blank" rel="noopener">
+          github.com/RealRaven/ChessMasterAI
+        </a>
+      </div>
+    </aside>
+
+    <div id="status-badge">Initializing…</div>
+  </div>
+
+  <!-- ========== Vendor UMD libraries (attach to window.*) ========== -->
+  <!--
+    Place the following files in ./vendor/ :
+      three.min.js        https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+      OrbitControls.js    https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js
+      GLTFLoader.js       https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js
+      CSS2DRenderer.js    https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js
+      chess.min.js        https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.11.0/chess.min.js
+  -->
+  <script src="./vendor/three.min.js"></script>
+  <script src="./vendor/OrbitControls.js"></script>
+  <script src="./vendor/GLTFLoader.js"></script>
+  <script src="./vendor/CSS2DRenderer.js"></script>
+  <script src="./vendor/chess.min.js"></script>
+
+  <!-- ========== Application entry point ========== -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
