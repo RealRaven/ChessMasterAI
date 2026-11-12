@@ -15,8 +15,8 @@ export const CONFIG = {
 
   /** Default Ollama model tags (overridable in the HUD) */
   defaultModels: {
-    white: 'qwen3.5:9b',
-    black: 'gemma4:e4b',
+    white: 'gemma4:e4b',
+    black: 'qwen3.5:9b',
   },
 
   /** Ollama chat endpoint. Change for a remote box. */

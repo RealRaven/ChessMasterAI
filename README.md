@@ -1,6 +1,6 @@
 # ♟️ ChessMasterAI — Qwen vs Gemma
 
-A single-page, zero-build 3D chess arena where two local Ollama vision models — qwen3.5:9b (White) and gemma4:e4b (Black) — battle it out in real time. Each model sees the board through a rendered PNG snapshot, talks trash in 3D speech bubbles, and is kept honest by a strict chess.js referee that blocks illegal moves before they hit the board.
+A single-page, zero-build 3D chess arena where two local Ollama vision models — gemma4:e4b (White) and qwen3.5:9b (Black) — battle it out in real time. Each model sees the board through a rendered PNG snapshot, talks trash in 3D speech bubbles, and is kept honest by a strict chess.js referee that blocks illegal moves before they hit the board.
 
 No build step. No backend. No cloud. Just a browser, Three.js, and your local LLM.
 
@@ -182,7 +182,7 @@ ChessMasterAI/
 │   │   └── vision-preview.js   # ← displays PNG data URL from memory, no caching
 │   ├── audio/
 │   │   ├── sfx.js
-│   │   └── tts.js
+│   │   └── tts.js   # ← Kokoro-82M WebGPU TTS wrapper
 │   ├── utils/
 │   │   ├── coords.js
 │   │   └── dom.js
@@ -213,7 +213,7 @@ Everything tunable lives in **`src/config.js`**:
 
 ```js
 export const CONFIG = {
-  defaultModels:    { white: 'qwen3.5:9b', black: 'gemma4:e4b' },
+  defaultModels:    { white: 'gemma4:e4b', black: 'qwen3.5:9b' },
   ollamaEndpoint:   'http://localhost:11434/api/chat',
   maxRetries:       3,
   snapshotFormat:   'image/png',   // browser-memory only; never written to disk
@@ -293,6 +293,7 @@ Then add an `<option value="myTheme">` in the theme `<select>` in `index.html`. 
 | `.glb` uploads show up floating | Model has non-identity origin | The loader recenters via `Box3`, but if it still floats, check `glb-loader.js` — some rigged models need `SkinnedMesh` pivot fixes |
 | Game soft-locks after a weird move | Shouldn't happen — fallback is `[Referee Override]` | If it does, open the browser console and file an issue with the referee log contents |
 | `importmap` not supported | Old browser | Use Chrome 89+, Firefox 108+, Safari 16.4+ |
+| AI speech is silent or overlaps | WebGPU unsupported or browser autoplay blocked | Ensure you clicked **▶ Play** (unlocks audio). If on Linux, ensure your browser has access to system audio. Kokoro will automatically fall back to WASM if WebGPU is missing. |
 
 ---
 
