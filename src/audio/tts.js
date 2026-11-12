@@ -1,5 +1,5 @@
 /* ================================================================
-   tts.js — Kokoro-82M TTS wrapper (WebGPU + WASM Fallback)
+   tts.js — Kokoro-82M TTS wrapper (WebGPU + Audio Queue)
    ================================================================ */
 
 import { KokoroTTS } from 'kokoro-js';
@@ -8,29 +8,28 @@ let tts = null;
 let muted = false;
 let audioCtx = null;
 
+// --- Audio Queue State ---
+let isSpeaking = false;
+const speechQueue = [];
+
 (async () => {
   try {
     console.log('[TTS] Loading Kokoro-82M model...');
     
     let device = 'wasm';
-    let dtype = 'q8'; // Optimized for WASM/CPU
+    let dtype = 'q8';
 
-    // Check if WebGPU is actually usable
     if (navigator.gpu) {
       try {
         const adapter = await navigator.gpu.requestAdapter();
         if (adapter) {
           device = 'webgpu';
-          dtype = 'fp32'; // WebGPU requires fp32 for correct audio generation
+          dtype = 'fp32';
           console.log('[TTS] WebGPU adapter found. Using GPU acceleration.');
-        } else {
-          console.log('[TTS] WebGPU supported but no adapter found. Falling back to WASM.');
         }
       } catch (e) {
-        console.warn('[TTS] WebGPU adapter request failed, falling back to WASM', e);
+        console.warn('[TTS] WebGPU adapter request failed, falling back to WASM');
       }
-    } else {
-      console.log('[TTS] WebGPU not supported in this browser. Using WASM.');
     }
 
     tts = await KokoroTTS.from_pretrained(
@@ -52,43 +51,68 @@ export function unlockAudio() {
   }
 }
 
-export async function speak(text, side = 'white') {
-  if (muted || !text || !tts) return;
+// --- Queue Processor ---
+async function processQueue() {
+  if (isSpeaking || speechQueue.length === 0) return;
+
+  isSpeaking = true;
+  const { text, side } = speechQueue.shift();
 
   try {
     unlockAudio();
-
+    
     const voice = side === 'white' ? 'af_sky' : 'am_adam';
     const cleanText = text.replace(/[*_#`"']/g, '').trim();
     
-    console.log(`[TTS] Generating audio for: "${cleanText}" with voice: ${voice}`);
+    if (!cleanText) {
+        isSpeaking = false;
+        processQueue(); // Skip empty text
+        return;
+    }
+
+    console.log(`[TTS] Generating audio for: "${cleanText}"`);
     
-    const audio = await tts.generate(cleanText, { 
-      voice: voice,
-      lang: "en-us" 
-    });
-    
+    const audio = await tts.generate(cleanText, { voice, lang: "en-us" });
     const wavBuffer = audio.toWav();
     
-    audioCtx.decodeAudioData(wavBuffer, (buffer) => {
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffer;
-      
-      const gainNode = audioCtx.createGain();
-      gainNode.gain.value = 1.0; 
-      
-      source.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      source.start(0);
-      console.log('[TTS] Playback started.');
-    }, (err) => {
-      console.error('[TTS] Error decoding WAV data:', err);
+    // Use a Promise to wait for the audio to finish playing
+    await new Promise((resolve, reject) => {
+      audioCtx.decodeAudioData(wavBuffer, (buffer) => {
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = 1.0; 
+        
+        source.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        source.onended = () => {
+          console.log('[TTS] Playback finished.');
+          resolve();
+        };
+        
+        source.start(0);
+        console.log('[TTS] Playback started.');
+      }, (err) => {
+        console.error('[TTS] Error decoding WAV data:', err);
+        reject(err);
+      });
     });
-    
+
   } catch (err) {
     console.error('[TTS] Generation or playback failed:', err);
+  } finally {
+    // Mark as done and process the next item in the queue
+    isSpeaking = false;
+    processQueue();
   }
+}
+
+export async function speak(text, side = 'white') {
+  if (muted || !text || !tts) return;
+  speechQueue.push({ text, side });
+  processQueue();
 }
 
 export const TTS = {
@@ -96,8 +120,12 @@ export const TTS = {
   isSupported() { return typeof WebAssembly === 'object'; },
   toggleMute() {
     muted = !muted;
-    if (muted && audioCtx) audioCtx.suspend();
-    else if (!muted && audioCtx) audioCtx.resume();
+    if (muted) {
+      speechQueue.length = 0; // Clear pending queue
+      if (audioCtx) audioCtx.suspend();
+    } else {
+      if (audioCtx) audioCtx.resume();
+    }
     return muted;
   },
   isMuted() { return muted; },
